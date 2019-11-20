@@ -2,40 +2,81 @@
 <plugin id="com-sarriaroman-photoviewer" version="1.2.4" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
 	<name>PhotoViewer</name>
 	<description>This plugin is intended to show a picture from an URL into a Photo Viewer with zoom features.</description>
-	<js-module name="PhotoViewer" src="www/PhotoViewer.js">
+
+    <js-module name="PhotoViewer" src="www/PhotoViewer.js">
 		<clobbers target="PhotoViewer" />
 	</js-module>
-	<platform name="android">
+
+    <platform name="android">
 		<config-file parent="/*" target="res/xml/config.xml">
 			<feature name="PhotoViewer">
 				<param name="android-package" value="com.sarriaroman.PhotoViewer.PhotoViewer" />
 			</feature>
 		</config-file>
-		<config-file parent="/*" target="AndroidManifest.xml" />
 
-		<config-file target="AndroidManifest.xml" parent="/manifest/application">
-            <activity android:name="com.sarriaroman.PhotoViewer.PhotoActivity" android:theme="@android:style/Theme.Holo.NoActionBar.Fullscreen" />
+        <config-file target="AndroidManifest.xml" parent="application">
+            <activity android:name="com.sarriaroman.PhotoViewer.PhotoActivity" android:theme="@style/Theme.AppCompat.NoActionBar" />
         </config-file>
 
-		<config-file parent="/manifest" target="AndroidManifest.xml">
-			<uses-permission android:name="android.permission.INTERNET" />
+        <config-file target="AndroidManifest.xml" parent="/*">
+            <uses-permission android:name="android.permission.INTERNET" />
 			<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 			<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-		</config-file>
+        </config-file>
+
+		<config-file target="AndroidManifest.xml" parent="application">
+            <provider 
+                android:name="com.sarriaroman.PhotoViewer.PhotoFileProvider"
+                android:authorities="com.sarriaroman.PhotoViewer.provider"
+                android:exported="false"
+                android:grantUriPermissions="true"
+            >
+                <meta-data 
+                    android:name="android.support.FILE_PROVIDER_PATHS"
+                    android:resource="@xml/photoviewer_paths" 
+                />
+            </provider>
+        </config-file>
 
 		<source-file src="src/android/PhotoViewer.java" target-dir="src/com/sarriaroman/PhotoViewer" />
 		<source-file src="src/android/PhotoActivity.java" target-dir="src/com/sarriaroman/PhotoViewer" />
+        <source-file src="src/android/BitmapTransform.java" target-dir="src/com/sarriaroman/PhotoViewer" />
+		<source-file src="src/android/res/layout/photoviewer_photo.xml" target-dir="res/layout" />
+        <source-file src="src/android/res/xml/photoviewer_paths.xml" target-dir="res/xml" />
 
-		<source-file src="src/android/layout/activity_photo.xml" target-dir="res/layout" />
+        <resource-file src="src/android/res/drawable-hdpi/ic_file_download_white.png" target="res/drawable-hdpi/ic_file_download_white.png" />
+        <resource-file src="src/android/res/drawable-hdpi/ic_link_white.png" target="res/drawable-hdpi/ic_link_white.png" />
+        <resource-file src="src/android/res/drawable-hdpi/ic_share_white.png" target="res/drawable-hdpi/ic_share_white.png" />
 
-		<framework src="src/android/photoviewer.gradle" custom="true" type="gradleReference" />
+        <resource-file src="src/android/res/drawable-mdpi/ic_file_download_white.png" target="res/drawable-mdpi/ic_file_download_white.png" />
+        <resource-file src="src/android/res/drawable-mdpi/ic_link_white.png" target="res/drawable-mdpi/ic_link_white.png" />
+        <resource-file src="src/android/res/drawable-mdpi/ic_share_white.png" target="res/drawable-mdpi/ic_share_white.png" />
+
+        <resource-file src="src/android/res/drawable-xhdpi/ic_file_download_white.png" target="res/drawable-xhdpi/ic_file_download_white.png" />
+        <resource-file src="src/android/res/drawable-xhdpi/ic_link_white.png" target="res/drawable-xhdpi/ic_link_white.png" />
+        <resource-file src="src/android/res/drawable-xhdpi/ic_share_white.png" target="res/drawable-xhdpi/ic_share_white.png" />
+
+        <resource-file src="src/android/res/drawable-xxhdpi/ic_file_download_white.png" target="res/drawable-xxhdpi/ic_file_download_white.png" />
+        <resource-file src="src/android/res/drawable-xxhdpi/ic_link_white.png" target="res/drawable-xxhdpi/ic_link_white.png" />
+        <resource-file src="src/android/res/drawable-xxhdpi/ic_share_white.png" target="res/drawable-xxhdpi/ic_share_white.png" />
+
+        <resource-file src="src/android/res/drawable-xxxhdpi/ic_file_download_white.png" target="res/drawable-xxxhdpi/ic_file_download_white.png" />
+        <resource-file src="src/android/res/drawable-xxxhdpi/ic_link_white.png" target="res/drawable-xxxhdpi/ic_link_white.png" />
+        <resource-file src="src/android/res/drawable-xxxhdpi/ic_share_white.png" target="res/drawable-xxxhdpi/ic_share_white.png" />
+
+        <framework src="com.android.support:support-v4:27+"/>
+        <framework src="com.android.support:appcompat-v7:27+"/>
+        <framework src="src/android/photoviewer.gradle" custom="true" type="gradleReference" />
 	</platform>
-	<platform name="ios">
+
+    <platform name="ios">
 		<config-file parent="/*" target="config.xml">
 			<feature name="PhotoViewer">
 				<param name="ios-package" value="PhotoViewer" />
 			</feature>
 		</config-file>
-		<source-file src="src/ios/PhotoViewer.m" />
+
+        <header-file src="src/ios/PhotoViewer.h" />
+        <source-file src="src/ios/PhotoViewer.m" />
 	</platform>
 </plugin>

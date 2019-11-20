@@ -1,10 +1,11 @@
 repositories{
-  jcenter()
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+    jcenter()
 }
 
 dependencies {
-   compile 'com.commit451:PhotoView:1.2.4'
-   compile 'com.squareup.picasso:picasso:2.5.2'
+   implementation 'com.commit451:PhotoView:1.2.4'
+   implementation 'com.squareup.picasso:picasso:2.5.3-SNAPSHOT'
 }
 
 android {

@@ -1,30 +1,7 @@
-/********* PhotoViewer.m Cordova Plugin Implementation *******/
-
-#import <Cordova/CDV.h>
+#import "PhotoViewer.h"
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <MobileCoreServices/MobileCoreServices.h>
-
-@interface PhotoViewer : CDVPlugin <UIDocumentInteractionControllerDelegate, UIScrollViewDelegate> {
-    // Member variables go here.
-    Boolean isOpen;
-    UIScrollView *fullView;
-    UIImageView *imageView;
-    UIButton *closeBtn;
-    UILabel *imageLabel;
-    BOOL showCloseBtn;
-    BOOL copyToReference;
-    NSDictionary *headers;
-}
-
-@property (nonatomic, strong) UIDocumentInteractionController *docInteractionController;
-@property (nonatomic, strong) NSMutableArray *documentURLs;
-
-- (void)show:(CDVInvokedUrlCommand*)command;
-@end
-
-
-
 
 @implementation PhotoViewer
 
@@ -75,10 +52,10 @@
         CDVPluginResult* pluginResult = nil;
         NSString* url = [command.arguments objectAtIndex:0];
         NSString* title = [command.arguments objectAtIndex:1];
-        BOOL isShareEnabled = [[command.arguments objectAtIndex:2] boolValue];
-        showCloseBtn = [[command.arguments objectAtIndex:3] boolValue];
-        copyToReference = [[command.arguments objectAtIndex:4] boolValue];
-        headers = [self headers:[command.arguments objectAtIndex:5]];
+        BOOL isShareEnabled = [[command.arguments objectAtIndex:6] boolValue];
+        showCloseBtn =  [[command.arguments objectAtIndex:7] boolValue];
+        copyToReference = [[command.arguments objectAtIndex:8] boolValue];
+        headers = [self headers:[command.arguments objectAtIndex:9]];
         
         if ([url rangeOfString:@"http"].location == 0) {
             copyToReference = true;
@@ -116,12 +93,13 @@
                         [activityIndicator stopAnimating];
                         [self closeImage];
                         // show an alert to the user
-                        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Photo viewer error"
-                                                                        message:@"The file to show is not a valid image, or could not be loaded."
-                                                                       delegate:self
-                                                              cancelButtonTitle:@"OK"
-                                                              otherButtonTitles:nil];
-                        [alert show];
+                        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Photo viewer error" message:@"The file to show is not a valid image, or could not be loaded." preferredStyle:UIAlertControllerStyleAlert];
+                        
+                        UIAlertAction *cancel = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleCancel handler:nil];
+                        
+                        [alert addAction:cancel];
+                        
+                        [self.viewController presentViewController:alert animated:YES completion:nil];
                     });
                 }
             }];
@@ -306,11 +284,42 @@
         NSString *value = [headers objectForKey:key];
         [request setValue:value forHTTPHeaderField:key];
     }
-    
-    NSData *data = [NSURLConnection sendSynchronousRequest:request
-                                         returningResponse:nil
-                                                     error:nil];
+        
+    NSData *data = [self sendSynchronousRequest:request returningResponse:nil error:nil];
     return data;
+}
+
+- (NSData *)sendSynchronousRequest:(NSURLRequest *)request returningResponse:(NSURLResponse **)response error:(NSError **)error {
+__block NSData *blockData = nil;
+@try {
+
+        __block NSURLResponse *blockResponse = nil;
+        __block NSError *blockError = nil;
+
+        dispatch_group_t group = dispatch_group_create();
+        dispatch_group_enter(group);
+
+        NSURLSession *session = [NSURLSession sharedSession];
+        [[session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable subData, NSURLResponse * _Nullable subResponse, NSError * _Nullable subError) {
+
+            blockData = subData;
+            blockError = subError;
+            blockResponse = subResponse;
+
+            dispatch_group_leave(group);
+        }] resume];
+
+        dispatch_group_wait(group,  DISPATCH_TIME_FOREVER);
+
+        *error = blockError;
+        *response = blockResponse;
+
+    } @catch (NSException *exception) {
+
+        NSLog(@"%@", exception.description);
+    } @finally {
+        return blockData;
+    }
 }
 
 @end

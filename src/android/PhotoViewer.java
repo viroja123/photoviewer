@@ -25,12 +25,14 @@ public class PhotoViewer extends CordovaPlugin {
 
     public static final int REQ_CODE = 0;
 
+    private static final String ACTION_SHOW = "show";
+
     protected JSONArray args;
     protected CallbackContext callbackContext;
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-        if (action.equals("show")) {
+        if (action.equals(ACTION_SHOW)) {
             this.args = args;
             this.callbackContext = callbackContext;
 
@@ -51,15 +53,14 @@ public class PhotoViewer extends CordovaPlugin {
     //
     protected void launchActivity() throws JSONException {
         Intent i = new Intent(this.cordova.getActivity(), com.sarriaroman.PhotoViewer.PhotoActivity.class);
-        PhotoActivity.mArgs = this.args;
+        PhotoActivity.rawArgs = this.args;
 
         this.cordova.getActivity().startActivity(i);
         this.callbackContext.success("");
     }
 
     @Override
-    public void onRequestPermissionResult(int requestCode, String[] permissions,
-                                          int[] grantResults) throws JSONException {
+    public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
         for (int r : grantResults) {
             if (r == PackageManager.PERMISSION_DENIED) {
                 this.callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, PERMISSION_DENIED_ERROR));
@@ -72,8 +73,5 @@ public class PhotoViewer extends CordovaPlugin {
                 launchActivity();
                 break;
         }
-
     }
-
-
 }

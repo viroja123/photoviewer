@@ -1,240 +1,327 @@
 package com.sarriaroman.PhotoViewer;
 
 import android.app.Activity;
+import android.app.Application;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.StrictMode;
+import android.support.v4.content.FileProvider;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.text.Html;
+import android.util.ArrayMap;
+
 import android.util.Base64;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.squareup.picasso.MemoryPolicy;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
 import com.squareup.picasso.UrlConnectionDownloader;
 
+import org.apache.cordova.BuildHelper;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.util.Iterator;
 
 import uk.co.senab.photoview.PhotoViewAttacher;
 
-public class PhotoActivity extends Activity {
-    private PhotoViewAttacher mAttacher;
+public class PhotoActivity extends AppCompatActivity {
+	private static final int ACTION_NONE = 0;
+	private static final int ACTION_DOWNLOAD = 1;
+	private static final int ACTION_SHARE = 2;
+	private static final int ACTION_COPY_LINK = 3;
 
-    private ImageView photo;
+	private static final ArrayMap<Integer, String> iconMap = new ArrayMap<Integer, String>();
+	static {
+		iconMap.put(ACTION_DOWNLOAD, "ic_file_download_white");
+		iconMap.put(ACTION_SHARE, "ic_share_white");
+		iconMap.put(ACTION_COPY_LINK, "ic_link_white");
+	}
 
-    private ImageButton closeBtn;
-    private ImageButton shareBtn;
-    private ProgressBar loadingBar;
+	private static final int MAX_WIDTH = 1024;
+	private static final int MAX_HEIGHT = 1024;
 
-    private TextView titleTxt;
+	private PhotoViewAttacher mAttacher;
+	private ImageView photo;
+	private Toolbar toolbar;
+	private TextView subTitle;
 
-    private String mImage;
-    private String mTitle;
-    private boolean mShare;
-    private JSONObject mHeaders;
-    private JSONObject pOptions;
-    private File mTempImage;
-    private int shareBtnVisibility;
+	private String imageUrl;
+	private JSONArray menuItems;
+	private String titleText;
+	private String subTitleText;
+	private int maxWidth;
+	private int maxHeight;
+    private JSONObject headers;
+    private JSONObject picassoOptions;
+    private File tempImage;
 
-    public static JSONArray mArgs = null;
+	private String applicationId;
+	private static final String TAG = "PhotoActivity";
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public static JSONArray rawArgs = null;
 
-        setContentView(getApplication().getResources().getIdentifier("activity_photo", "layout", getApplication().getPackageName()));
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
 
-        // Load the Views
-        findViews();
+		this.applicationId = (String) BuildHelper.getBuildConfigValue(this, "APPLICATION_ID");
 
-        try {
-            this.mImage = mArgs.getString(0);
-            this.mTitle = mArgs.getString(1);
-            this.mShare = mArgs.getBoolean(2);
-            this.mHeaders = parseHeaders(mArgs.optString(5));
-            this.pOptions = mArgs.optJSONObject(6);
+		setContentView(getApplication().getResources().getIdentifier("photoviewer_photo", "layout", getApplication().getPackageName()));
 
-            if( pOptions == null ) {
-                pOptions = new JSONObject();
-                pOptions.put("fit", true);
-                pOptions.put("centerInside", true);
-                pOptions.put("centerCrop", false);
-            }
+		try {
+            this.imageUrl = rawArgs.getString(0);
+            this.titleText = rawArgs.getString(1);
+            this.subTitleText = rawArgs.getString(2);
+            this.maxWidth = rawArgs.getInt(3);
+            this.maxHeight = rawArgs.getInt(4);
+            this.menuItems = rawArgs.getJSONArray(5);
+            this.headers = parseHeaders(rawArgs.optString(9));
+            this.picassoOptions = rawArgs.optJSONObject(10);
 
-            //Set the share button visibility
-            shareBtnVisibility = this.mShare ? View.VISIBLE : View.INVISIBLE;
+            // Load the Views
+            findViews();
 
-
-        } catch (JSONException exception) {
-            shareBtnVisibility = View.INVISIBLE;
-        }
-        shareBtn.setVisibility(shareBtnVisibility);
-        //Change the activity title
-        if (!mTitle.equals("")) {
-            titleTxt.setText(mTitle);
-        }
-
-        try {
             loadImage();
         } catch (JSONException e) {
             e.printStackTrace();
         }
+	}
 
-        // Set Button Listeners
-        closeBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		super.onCreateOptionsMenu(menu);
 
-        shareBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (Build.VERSION.SDK_INT >= 24) {
-                    try {
-                        Method m = StrictMode.class.getMethod("disableDeathOnFileUriExposure");
-                        m.invoke(null);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
+		Application application = getApplication();
+		Resources resources = application.getResources();
+		String packageName = application.getPackageName();
 
-                Uri imageUri;
-                if (mTempImage == null) {
-                    mTempImage = getLocalBitmapFileFromView(photo);
-                }
+		for (int i = 0; i < menuItems.length(); i++) {
+			JSONObject menuItem = menuItems.optJSONObject(i);
+			MenuItem item = menu.add(Menu.NONE, i, Menu.NONE, menuItem.optString("title"));
+			String iconPath = menuItem.optString("icon");
+			if (!iconPath.isEmpty()) {
+				try {
+					item.setIcon(Drawable.createFromStream(getAssets().open(iconPath), null));
+				} catch (IOException e) {
+					Log.e(TAG, "icon from asset drawable", e);
+				}
+			} else {
+				String icon = this.iconMap.get(menuItem.optInt("action"));
+				item.setIcon(resources.getIdentifier(icon, "id", packageName));
+			}
 
-                imageUri = Uri.fromFile(mTempImage);
+			item.setShowAsAction(menuItem.optInt("showAs"));
+		}
 
-                if (imageUri != null) {
-                    Intent sharingIntent = new Intent(Intent.ACTION_SEND);
+		return true;
+	}
 
-                    sharingIntent.setType("image/*");
-                    sharingIntent.putExtra(Intent.EXTRA_STREAM, imageUri);
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		int itemId = item.getItemId();
 
-                    startActivity(Intent.createChooser(sharingIntent, "Share"));
-                }
-            }
-        });
+		try {
+			JSONObject currentItem = menuItems.getJSONObject(itemId);
+			int action = currentItem.getInt("action");
 
-    }
+			if (action == this.ACTION_DOWNLOAD) {
+				this.onDownloadAction(currentItem);
+			} else if (action == this.ACTION_SHARE) {
+				this.onShareAction(currentItem);
+			} else if (action == this.ACTION_COPY_LINK) {
+				this.onCopyLinkAction(currentItem);
+			}
+		} catch (JSONException e) {
+			Log.e(TAG, "Error: ", e);
+		}
 
-    /**
-     * Find and Connect Views
-     */
-    private void findViews() {
-        // Buttons first
-        closeBtn = (ImageButton) findViewById(getApplication().getResources().getIdentifier("closeBtn", "id", getApplication().getPackageName()));
-        shareBtn = (ImageButton) findViewById(getApplication().getResources().getIdentifier("shareBtn", "id", getApplication().getPackageName()));
+		return super.onOptionsItemSelected(item);
+	}
 
-        //ProgressBar
-        loadingBar = (ProgressBar) findViewById(getApplication().getResources().getIdentifier("loadingBar", "id", getApplication().getPackageName()));
-        // Photo Container
-        photo = (ImageView) findViewById(getApplication().getResources().getIdentifier("photoView", "id", getApplication().getPackageName()));
-        mAttacher = new PhotoViewAttacher(photo);
+	private void onCopyLinkAction(JSONObject menuItem) {
+		ClipboardManager clipboard = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
+		ClipData clip = ClipData.newPlainText(imageUrl, imageUrl);
+		clipboard.setPrimaryClip(clip);
 
-        // Title TextView
-        titleTxt = (TextView) findViewById(getApplication().getResources().getIdentifier("titleTxt", "id", getApplication().getPackageName()));
-    }
+		Toast.makeText(getActivity(), "Copied", Toast.LENGTH_LONG).show();
+	}
 
-    /**
-     * Get the current Activity
-     *
-     * @return
-     */
-    private Activity getActivity() {
-        return this;
-    }
+	private void onShareAction(JSONObject menuItem) {
+	    Bitmap bmp = null;
+	    try {
+            File file = this.getLocalBitmapFileFromView(photo);
+            bmp = BitmapFactory.decodeStream(new FileInputStream(file), null, null);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
 
-    /**
-     * Hide Loading when showing the photo. Update the PhotoView Attacher
-     */
-    private void hideLoadingAndUpdate() {
-        photo.setVisibility(View.VISIBLE);
-        loadingBar.setVisibility(View.INVISIBLE);
-        shareBtn.setVisibility(shareBtnVisibility);
+		if (bmp != null) {
+			File path = this.getApplicationContext().getCacheDir();
+			File file = writeFileToPath(path, bmp);
 
-        mAttacher.update();
-    }
+			Intent intent = new Intent(Intent.ACTION_SEND);
+
+			Uri uri = FileProvider.getUriForFile(this.getApplicationContext(), this.applicationId + ".provider", file);
+
+			intent.putExtra(Intent.EXTRA_STREAM, uri);
+			intent.setType("image/*");
+			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+			String title = menuItem.optString("title", "Share");
+			startActivity(Intent.createChooser(intent, title));
+		}
+	}
+
+	private void onDownloadAction(JSONObject menuItem) {
+        Bitmap bmp = null;
+        try {
+            File file = this.getLocalBitmapFileFromView(photo);
+            bmp = BitmapFactory.decodeStream(new FileInputStream(file), null, null);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+		if (bmp != null) {
+			File path = Environment.getExternalStoragePublicDirectory(
+					Environment.DIRECTORY_DOWNLOADS);
+			File file = this.writeFileToPath(path, bmp);
+
+			Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file));
+			getApplication().getApplicationContext().sendBroadcast(intent);
+
+			Toast.makeText(getActivity(), "Download Completed", Toast.LENGTH_LONG).show();
+		}
+	}
+
+	/**
+	 * Find and Connect Views
+	 *
+	 */
+	private void findViews() {
+		Application application = getApplication();
+		Resources resources = application.getResources();
+		String packageName = application.getPackageName();
+
+		// Photo Container
+		photo = (ImageView) findViewById( resources.getIdentifier("photoView", "id", packageName) );
+		mAttacher = new PhotoViewAttacher(photo);
+
+		// ToolBar
+		toolbar = (Toolbar) findViewById( resources.getIdentifier("toolbar", "id", packageName) ); // Attaching the layout to the toolbar object
+		setSupportActionBar(toolbar);
+		getSupportActionBar().setTitle(this.titleText);
+
+		// SubTitle
+		subTitle = (TextView) findViewById( resources.getIdentifier("subtitleView", "id", packageName) );
+		subTitle.setText(Html.fromHtml(this.subTitleText));
+	}
+
+	/**
+	 * Get the current Activity
+	 *
+	 * @return
+	 */
+	private Activity getActivity() {
+		return this;
+	}
+
+	/**
+	 * Hide Loading when showing the photo. Update the PhotoView Attacher
+	 */
+	private void hideLoadingAndUpdate() {
+		photo.setVisibility(View.VISIBLE);
+		mAttacher.update();
+	}
 
     private RequestCreator setOptions(RequestCreator picasso) throws JSONException {
-        if(this.pOptions.has("fit") && this.pOptions.optBoolean("fit")) {
+        int width = (maxWidth != 0) ? this.maxWidth : MAX_WIDTH;
+		int height = (maxHeight != 0) ? this.maxHeight : MAX_HEIGHT;
+		int size = (int) Math.ceil(Math.sqrt(width * height));
+
+        picasso.transform(new BitmapTransform(width, height));
+        picasso.memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE);
+		picasso.resize(size, size);
+
+        if(this.picassoOptions.has("fit") && this.picassoOptions.optBoolean("fit")) {
             picasso.fit();
         }
 
-        if(this.pOptions.has("centerInside") && this.pOptions.optBoolean("centerInside")) {
+        if(this.picassoOptions.has("centerInside") && this.picassoOptions.optBoolean("centerInside")) {
             picasso.centerInside();
         }
 
-        if(this.pOptions.has("centerCrop") && this.pOptions.optBoolean("centerCrop")) {
+        if(this.picassoOptions.has("centerCrop") && this.picassoOptions.optBoolean("centerCrop")) {
             picasso.centerCrop();
         }
 
         return picasso;
     }
-
+    
     /**
      * Load the image using Picasso
      */
     private void loadImage() throws JSONException {
-        if (mImage.startsWith("http") || mImage.startsWith("file")) {
+        if (this.imageUrl.startsWith("http") || this.imageUrl.startsWith("file")) {
             Picasso picasso;
-            if (mHeaders == null) {
+            if (headers == null) {
                 picasso = Picasso.with(PhotoActivity.this);
             } else {
                 picasso = getImageLoader(this);
             }
 
-            this.setOptions(picasso.load(mImage))
-                    .into(photo, new com.squareup.picasso.Callback() {
-                        @Override
-                        public void onSuccess() {
-                            hideLoadingAndUpdate();
-                        }
+            this.setOptions(picasso.load(this.imageUrl))
+                .into(photo, new com.squareup.picasso.Callback() {
+                    @Override
+                    public void onSuccess() {
+                        hideLoadingAndUpdate();
+                    }
 
-                        @Override
-                        public void onError() {
-                            Toast.makeText(getActivity(), "Error loading image.", Toast.LENGTH_LONG).show();
+                    @Override
+                    public void onError() {
+                        Toast.makeText(getActivity(), "Error loading image.", Toast.LENGTH_LONG).show();
 
-                            finish();
-                        }
-                    });
-        } else if (mImage.startsWith("data:image")) {
-
+                        finish();
+                    }
+                });
+        } else if (this.imageUrl.startsWith("data:image")) {
             new AsyncTask<Void, Void, File>() {
-
                 protected File doInBackground(Void... params) {
-                    String base64Image = mImage.substring(mImage.indexOf(",") + 1);
+                    String base64Image = imageUrl.substring(imageUrl.indexOf(",") + 1);
                     return getLocalBitmapFileFromString(base64Image);
                 }
 
                 protected void onPostExecute(File file) {
-                    mTempImage = file;
+                    tempImage = file;
                     Picasso picasso = Picasso.with(PhotoActivity.this);
 
                     try {
-                        setOptions(picasso.load(mTempImage))
+                        setOptions(picasso.load(tempImage))
                                 .into(photo, new com.squareup.picasso.Callback() {
                                     @Override
                                     public void onSuccess() {
@@ -253,27 +340,49 @@ public class PhotoActivity extends Activity {
                     }
                 }
             }.execute();
-
         } else {
-            photo.setImageURI(Uri.parse(mImage));
+            photo.setImageURI(Uri.parse(this.imageUrl));
 
             hideLoadingAndUpdate();
         }
-    }
+	}
+
+	private File writeFileToPath(File path, Bitmap bmp) {
+		try {
+			File file = new File(path, this.getFileName());
+
+			path.mkdirs();
+
+			FileOutputStream out = new FileOutputStream(file);
+			bmp.compress(Bitmap.CompressFormat.PNG, 90, out);
+			out.close();
+
+			return file;
+		} catch(FileNotFoundException e) {
+			Log.e(TAG, "File not found: ", e);
+		} catch (IOException e) {
+			Log.e(TAG, "IO: ", e);
+		}
+
+		return null;
+	}
 
     public void onDestroy() {
-        if (mTempImage != null) {
-            mTempImage.delete();
+        if (tempImage != null) {
+            tempImage.delete();
         }
         super.onDestroy();
     }
 
+    private String getFileName() {
+		return "share_image_" + System.currentTimeMillis() + ".png";
+	}
 
     public File getLocalBitmapFileFromString(String base64) {
         File file;
+
         try {
-            file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "share_image_" + System.currentTimeMillis() + ".png");
+            file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), this.getFileName());
             file.getParentFile().mkdirs();
             FileOutputStream output = new FileOutputStream(file);
             byte[] decoded = Base64.decode(base64, Base64.DEFAULT);
@@ -304,9 +413,9 @@ public class PhotoActivity extends Activity {
 
         // Store image to default external storage directory
         File file;
+
         try {
-            file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "share_image_" + System.currentTimeMillis() + ".png");
+            file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), this.getFileName());
             file.getParentFile().mkdirs();
             FileOutputStream out = new FileOutputStream(file);
             bmp.compress(Bitmap.CompressFormat.PNG, 90, out);
@@ -343,12 +452,12 @@ public class PhotoActivity extends Activity {
             @Override
             protected HttpURLConnection openConnection(Uri uri) throws IOException {
                 HttpURLConnection connection = super.openConnection(uri);
-                Iterator<String> keyIter = mHeaders.keys();
+                Iterator<String> keyIter = headers.keys();
                 String key = null;
                 try {
                     while (keyIter.hasNext()) {
                         key = keyIter.next();
-                        connection.setRequestProperty(key, mHeaders.getString(key));
+                        connection.setRequestProperty(key, headers.getString(key));
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
