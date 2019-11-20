@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8' ?>
-<plugin id="com-sarriaroman-photoviewer" version="1.2.4" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+<plugin id="cordova-plugin-photoviewer" version="1.2.4" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
 	<name>PhotoViewer</name>
 	<description>This plugin is intended to show a picture from an URL into a Photo Viewer with zoom features.</description>
 
@@ -10,12 +10,12 @@
     <platform name="android">
 		<config-file parent="/*" target="res/xml/config.xml">
 			<feature name="PhotoViewer">
-				<param name="android-package" value="com.sarriaroman.PhotoViewer.PhotoViewer" />
+				<param name="android-package" value="com.ryver.plugins.photoviewer.PhotoViewer" />
 			</feature>
 		</config-file>
 
         <config-file target="AndroidManifest.xml" parent="application">
-            <activity android:name="com.sarriaroman.PhotoViewer.PhotoActivity" android:theme="@style/Theme.AppCompat.NoActionBar" />
+            <activity android:name="com.ryver.plugins.photoviewer.PhotoActivity" android:theme="@style/Theme.AppCompat.NoActionBar" />
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/*">
@@ -26,8 +26,8 @@
 
 		<config-file target="AndroidManifest.xml" parent="application">
             <provider 
-                android:name="com.sarriaroman.PhotoViewer.PhotoFileProvider"
-                android:authorities="com.sarriaroman.PhotoViewer.provider"
+                android:name="com.ryver.plugins.photoviewer.PhotoFileProvider"
+                android:authorities="com.ryver.plugins.photoviewer.provider"
                 android:exported="false"
                 android:grantUriPermissions="true"
             >
@@ -38,9 +38,9 @@
             </provider>
         </config-file>
 
-		<source-file src="src/android/PhotoViewer.java" target-dir="src/com/sarriaroman/PhotoViewer" />
-		<source-file src="src/android/PhotoActivity.java" target-dir="src/com/sarriaroman/PhotoViewer" />
-        <source-file src="src/android/BitmapTransform.java" target-dir="src/com/sarriaroman/PhotoViewer" />
+		<source-file src="src/android/PhotoViewer.java" target-dir="src/com/ryver/plugins/photoviewer" />
+		<source-file src="src/android/PhotoActivity.java" target-dir="src/com/ryver/plugins/photoviewer" />
+        <source-file src="src/android/BitmapTransform.java" target-dir="src/com/ryver/plugins/photoviewer" />
 		<source-file src="src/android/res/layout/photoviewer_photo.xml" target-dir="res/layout" />
         <source-file src="src/android/res/xml/photoviewer_paths.xml" target-dir="res/xml" />
 
