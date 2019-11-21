@@ -35,27 +35,31 @@ const SHOW_AS_ACTION = {
     COLLAPSE_ACTION_VIEW: 8, // This item's action view collapses to a normal menu item. When expanded, the action view temporarily takes over a larger segment of its container.
 }
 
-class PhotoViewer {
-    public Action = ACTION;
-    public ShowAsAction = SHOW_AS_ACTION;
+const DEFAULT_OPTIONS = {
+    url: '',
+    title: '',
+    subtitle: '',
+    maxWidth: 0,
+    maxHeight: 0,
+    menu: [],
+    share: false,
+    closeButton: true,
+    copyToReference: false,
+    headers: '',
+    picasso: {
+        fit: true,
+        centerInside: true,
+        centerCrop: false
+    }
+};
 
-    public static show(options: IPhotoViewerOptions = {
-        url: '',
-        title: '',
-        subtitle: '',
-        maxWidth: 0,
-        maxHeight: 0,
-        menu: [],
-        share: false,
-        closeButton: true,
-        copyToReference: false,
-        headers: '',
-        picasso: {
-            fit: true,
-            centerInside: true,
-            centerCrop: false
-        }
-    }) {
+class PhotoViewer {
+    public static Action = ACTION;
+    public static ShowAsAction = SHOW_AS_ACTION;
+
+    public static show(options: IPhotoViewerOptions = DEFAULT_OPTIONS) {
+        options = { ...DEFAULT_OPTIONS, ...options };
+
         if (!options.url) {
             // Do nothing
             return;
