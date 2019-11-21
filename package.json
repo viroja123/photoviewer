@@ -8,10 +8,6 @@
       "ios"
     ]
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/sarriaroman/photoviewer"
-  },
   "keywords": [
     "cordova",
     "photoviewer",
