@@ -1,6 +1,7 @@
 package com.sarriaroman.PhotoViewer;
 
 import android.graphics.Bitmap;
+import android.util.Log;
 import com.squareup.picasso.Transformation;
 
 public class BitmapTransform implements Transformation {
