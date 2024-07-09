@@ -20,6 +20,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.Html;
 import android.util.ArrayMap;
+import android.util.Log;
+
 
 import android.util.Base64;
 import android.util.Log;
