@@ -15,6 +15,7 @@ public class BitmapTransform implements Transformation {
 
     @Override
     public Bitmap transform(Bitmap source) {
+                Log.d("BitmapTransform", "transform method called----------------------------->");
         int targetWidth, targetHeight;
         double aspectRatio;
 
