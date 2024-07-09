@@ -11,6 +11,7 @@ public class BitmapTransform implements Transformation {
     public BitmapTransform(int maxWidth, int maxHeight) {
         this.maxWidth = maxWidth;
         this.maxHeight = maxHeight;
+                Log.d("BitmapTransform", "BitmapTransform constructor called with maxWidth: " + maxWidth + " and maxHeight: " + maxHeight);
     }
 
     @Override
