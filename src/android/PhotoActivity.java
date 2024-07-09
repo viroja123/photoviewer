@@ -287,6 +287,7 @@ public class PhotoActivity extends AppCompatActivity {
      * Load the image using Picasso
      */
     private void loadImage() throws JSONException {
+	            Log.d("BitmapTransform", "Calle -------------->>>>Activity Method---------------------->>>>>");
         if (this.imageUrl.startsWith("http") || this.imageUrl.startsWith("file")) {
             Picasso picasso;
             if (headers == null) {
